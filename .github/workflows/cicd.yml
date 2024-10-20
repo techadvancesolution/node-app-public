@@ -1,0 +1,44 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Adjust as needed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.UBUNTU_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Create target directory on Ubuntu
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.UBUNTU_HOST }} "mkdir -p /home/ubuntu/node-app"
+
+      - name: Copy files to Ubuntu
+        run: |
+          scp -o StrictHostKeyChecking=no -r ./* ubuntu@${{ secrets.UBUNTU_HOST }}:/home/ubuntu/node-app
+
+      - name: Copy node.sh to Ubuntu
+        run: |
+          scp -o StrictHostKeyChecking=no node.sh ubuntu@${{ secrets.UBUNTU_HOST }}:/home/ubuntu/node-app
+
+      - name: Execute node.sh on Ubuntu
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.UBUNTU_HOST }} "bash /home/ubuntu/node-app/node.sh"    
+
+      - name: Run Docker Compose on Ubuntu
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.UBUNTU_HOST }} "cd /home/ubuntu/node-app && docker-compose down"
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.UBUNTU_HOST }} "cd /home/ubuntu/node-app && docker-compose up -d --build"
+
+      - name: Prune Docker images on Ubuntu
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.UBUNTU_HOST }} "docker image prune -a -f"
