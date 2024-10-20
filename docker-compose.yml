@@ -1,0 +1,25 @@
+version: '3.7'
+
+services:
+  environment:
+    build:
+      context: .
+      dockerfile: Dockerfile  # Ensure the filename is correct (case-sensitive)
+    ports:
+      - "3005"  # This may cause port conflicts if scaled beyond 1 replica
+    stdin_open: true
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: node app.js
+    deploy:
+      replicas: 2  # Adjust the number of replicas as needed
+      resources:
+        limits:
+          cpus: '0.5'  # Limit CPU usage
+          memory: 512M  # Limit memory usage
+      restart_policy:
+        condition: on-failure  # Restart the container on failure
+
+networks:
+  default:
+    driver: overlay  # Use overlay network for Swarm
